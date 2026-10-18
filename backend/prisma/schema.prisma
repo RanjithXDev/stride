@@ -1,0 +1,742 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id               String                    @id @default(cuid())
+  name             String
+  slug             String                    @unique
+  logoUrl          String?
+  plan             PlanType                  @default(FREE)
+  isActive         Boolean                   @default(true)
+  settings         Json                      @default("{}")
+  nextTicketNumber Int                       @default(1)
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  users            User[]
+  departments      Department[]
+  projects         Project[]
+  attendances      Attendance[]
+  expenses         Expense[]
+  tickets          Ticket[]
+  scmConnections   SourceControlConnection[]
+  scmRepos         ScmRepo[]
+  incomes          Income[]
+  auditEvents      AuditEvent[]
+  pmConnections    ProjectManagementConnection[]
+}
+
+model Department {
+  id             String        @id @default(cuid())
+  name           String
+  organizationId String?
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  projects       Project[]
+  employees      User[]
+
+  @@unique([name, organizationId])
+}
+
+model Expense {
+  id             String            @id @default(cuid())
+  title          String
+  amount         Decimal           @db.Decimal(12, 2)
+  category       ExpenseCategory   @default(OTHER)
+  description    String?
+  status         ExpenseStatus     @default(DRAFT)
+  proofUrl       String?
+  proofName      String?
+  proofType      String?
+  submittedById  String
+  organizationId String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  submittedBy    User              @relation(fields: [submittedById], references: [id])
+  organization   Organization?     @relation(fields: [organizationId], references: [id])
+  approvals      ExpenseApproval[]
+}
+
+model ExpenseApproval {
+  id         String   @id @default(cuid())
+  expenseId  String
+  approverId String
+  level      Int
+  decision   String
+  note       String?
+  decidedAt  DateTime @default(now())
+  approver   User     @relation(fields: [approverId], references: [id])
+  expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, level])
+}
+
+model Project {
+  id               String              @id @default(cuid())
+  name             String
+  description      String?
+  status           ProjectStatus       @default(PLANNING)
+  startDate        DateTime?
+  deadline         DateTime?
+  departmentId     String?
+  organizationId   String?
+  key              String?
+  nextTicketNumber Int                 @default(1)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  department       Department?         @relation(fields: [departmentId], references: [id])
+  organization     Organization?       @relation(fields: [organizationId], references: [id])
+  members          ProjectMember[]
+  tickets          Ticket[]
+  timeLogs         TimeLog[]
+  repositories     ProjectRepository[]
+
+  @@unique([organizationId, key])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("Member")
+  joinedAt  DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model Ticket {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  status          TicketStatus     @default(OPEN)
+  priority        TicketPriority   @default(MEDIUM)
+  type            TicketType       @default(TASK)
+  projectId       String?
+  organizationId  String
+  assigneeId      String?
+  reporterId      String
+  dueDate         DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  estimation      Int?
+  parentId        String?
+  ticketNumber    Int              @default(autoincrement())
+  projectSequence Int?
+  key             String
+  version         Int              @default(1)
+  deletedAt       DateTime?
+  assignee        User?            @relation("Ticket_assigneeIdToUser", fields: [assigneeId], references: [id])
+  parent          Ticket?          @relation("TicketToTicket", fields: [parentId], references: [id])
+  children        Ticket[]         @relation("TicketToTicket")
+  project         Project?         @relation(fields: [projectId], references: [id])
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  reporter        User             @relation("Ticket_reporterIdToUser", fields: [reporterId], references: [id])
+  activities      TicketActivity[]
+  comments        TicketComment[]
+  linksFrom       TicketLink[]     @relation("TicketLink_sourceIdToTicket")
+  linksTo         TicketLink[]     @relation("TicketLink_targetIdToTicket")
+  timeLogs        TimeLog[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId, deletedAt, updatedAt])
+  @@index([organizationId, projectId, status])
+  @@index([organizationId, assigneeId, status])
+  @@index([organizationId, reporterId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, type])
+  @@index([organizationId, dueDate])
+  @@index([organizationId, parentId])
+}
+
+model TicketActivity {
+  id        String             @id @default(cuid())
+  ticketId  String
+  userId    String
+  type      TicketActivityType
+  from      String?
+  to        String?
+  createdAt DateTime           @default(now())
+  ticket    Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id])
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  content   String
+  ticketId  String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model TicketLink {
+  id        String   @id @default(cuid())
+  sourceId  String
+  targetId  String
+  linkType  LinkType @default(RELATES_TO)
+  createdAt DateTime @default(now())
+  source    Ticket   @relation("TicketLink_sourceIdToTicket", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    Ticket   @relation("TicketLink_targetIdToTicket", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId])
+}
+
+model TimeLog {
+  id        String   @id @default(cuid())
+  minutes   Int
+  notes     String?
+  userId    String
+  ticketId  String?
+  projectId String?
+  loggedAt  DateTime @default(now())
+  workType  WorkType @default(DEVELOPMENT)
+  project   Project? @relation(fields: [projectId], references: [id])
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Attendance {
+  id             String           @id @default(cuid())
+  userId         String
+  organizationId String?
+  date           DateTime         @db.Date
+  checkIn        DateTime
+  checkOut       DateTime?
+  duration       Int?
+  status         AttendanceStatus @default(PRESENT)
+  workMode       String?          @default("OFFICE")
+  notes          String?
+  latitude       Float?
+  longitude      Float?
+  address        String?
+  createdAt      DateTime         @default(now())
+  user           User             @relation(fields: [userId], references: [id])
+  organization   Organization?    @relation(fields: [organizationId], references: [id])
+
+  @@index([userId, date])
+  @@index([organizationId, date])
+}
+
+model User {
+  id                 String                    @id @default(cuid())
+  name               String
+  email              String                    @unique
+  password           String
+  role               Role                      @default(EMPLOYEE)
+  jobTitle           String?
+  isSuperAdmin       Boolean                   @default(false)
+  avatar             String?
+  departmentId       String?
+  managerId          String?
+  organizationId     String?
+  isActive           Boolean                   @default(true)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  attendances        Attendance[]
+  expenses           Expense[]
+  expenseApprovals   ExpenseApproval[]
+  projectMemberships ProjectMember[]
+  assignedTickets    Ticket[]                  @relation("Ticket_assigneeIdToUser")
+  reportedTickets    Ticket[]                  @relation("Ticket_reporterIdToUser")
+  ticketActivities   TicketActivity[]
+  ticketComments     TicketComment[]
+  timeLogs           TimeLog[]
+  department         Department?               @relation(fields: [departmentId], references: [id])
+  organization       Organization?             @relation(fields: [organizationId], references: [id])
+  manager            User?                     @relation("UserToUser", fields: [managerId], references: [id])
+  directReports      User[]                    @relation("UserToUser")
+  sourceIdentities   EmployeeSourceIdentity[]
+  scmConnections     SourceControlConnection[] @relation("ScmConnectedBy")
+  pmConnections      ProjectManagementConnection[] @relation("PmConnectedBy")
+  recordedIncomes    Income[]
+  auditEvents        AuditEvent[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model AuditEvent {
+  id              String          @id @default(cuid())
+  organizationId  String
+  actorId          String?
+  action           String
+  resourceType     String
+  resourceId       String
+  source           AuditSource     @default(API)
+  beforeState      Json?
+  afterState       Json?
+  metadata         Json?
+  reason           String?
+  requestId        String?
+  resourceVersion  Int?
+  reversible       Boolean         @default(false)
+  reversibleUntil  DateTime?
+  reversalStatus   ReversalStatus  @default(NOT_REQUESTED)
+  reversesEventId  String?         @unique
+  createdAt        DateTime         @default(now())
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor            User?            @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  reversesEvent    AuditEvent?       @relation("AuditReversal", fields: [reversesEventId], references: [id], onDelete: Restrict)
+  reversedByEvent  AuditEvent?       @relation("AuditReversal")
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, resourceType, resourceId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  HALF_DAY
+  ABSENT
+  WFH
+  LEAVE
+}
+
+enum ExpenseCategory {
+  TRAVEL
+  MEALS
+  EQUIPMENT
+  SOFTWARE
+  TRAINING
+  OFFICE
+  OTHER
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  L1_APPROVED
+  REJECTED
+  PAID
+  APPROVED
+}
+
+enum LinkType {
+  RELATES_TO
+  BLOCKS
+  BLOCKED_BY
+  DUPLICATES
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum Role {
+  FOUNDER
+  CPO
+  CFO
+  HR
+  MANAGER
+  TEAM_LEAD
+  EMPLOYEE
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  IN_REVIEW
+  CLOSED
+}
+
+enum TicketType {
+  BUG
+  FEATURE
+  TASK
+  IMPROVEMENT
+}
+
+enum TicketActivityType {
+  CREATED
+  TITLE_CHANGED
+  DESCRIPTION_CHANGED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  TYPE_CHANGED
+  ASSIGNEE_CHANGED
+  ESTIMATION_SET
+  DUE_DATE_SET
+  PARENT_SET
+  COMMENT_ADDED
+  COMMENT_EDITED
+  COMMENT_DELETED
+  TIME_LOGGED
+  LINKED
+  LINK_REMOVED
+  SOFT_DELETED
+  RESTORED
+}
+
+enum WorkType {
+  DEVELOPMENT
+  TESTING
+  MEETING
+  DOCUMENTATION
+  REVIEW
+  DESIGN
+  BUG_FIX
+  PLANNING
+  OTHER
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum AuditSource {
+  UI
+  API
+  SYSTEM
+  JOB
+  INTEGRATION
+  WEBHOOK
+}
+
+enum ReversalStatus {
+  NOT_REQUESTED
+  AVAILABLE
+  REVERSED
+  EXPIRED
+  BLOCKED
+  FAILED
+}
+
+enum ScmProvider {
+  GITHUB
+  GITLAB
+}
+
+enum ScmConnStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  ERROR
+}
+
+enum RepoSetupMode {
+  CREATED
+  MAPPED
+}
+
+enum AccessGrantStatus {
+  QUEUED
+  INVITATION_PENDING
+  ACTIVE
+  UPDATE_PENDING
+  REVOKE_PENDING
+  REVOKED
+  FAILED
+  BLOCKED
+  EXTERNALLY_MANAGED
+}
+
+enum IntegrationJobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+  DEAD
+}
+
+enum IntegrationJobOp {
+  GRANT_ACCESS
+  REVOKE_ACCESS
+  UPDATE_PERMISSION
+  SYNC_REPO
+  CREATE_REPO
+}
+
+model SourceControlConnection {
+  id                    String                   @id @default(cuid())
+  organizationId        String
+  provider              ScmProvider
+  providerHost          String                   @default("https://github.com")
+  externalAccountId     String
+  accountName           String
+  encryptedAccessToken  String
+  encryptedRefreshToken String?
+  tokenExpiresAt        DateTime?
+  status                ScmConnStatus            @default(ACTIVE)
+  connectedById         String
+  lastSyncedAt          DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  organization          Organization             @relation(fields: [organizationId], references: [id])
+  connectedBy           User                     @relation("ScmConnectedBy", fields: [connectedById], references: [id])
+  identities            EmployeeSourceIdentity[]
+  repositories          ProjectRepository[]
+  jobs                  IntegrationJob[]
+  scmRepos              ScmRepo[]
+
+  @@unique([organizationId, provider, providerHost, externalAccountId])
+}
+
+model EmployeeSourceIdentity {
+  id                 String                  @id @default(cuid())
+  userId             String
+  connectionId       String
+  providerUserId     String
+  username           String
+  email              String?
+  avatarUrl          String?
+  verificationStatus String                  @default("VERIFIED")
+  verifiedAt         DateTime                @default(now())
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection         SourceControlConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  accessGrants       RepositoryAccessGrant[]
+
+  @@unique([userId, connectionId])
+}
+
+model ProjectRepository {
+  id                   String                  @id @default(cuid())
+  projectId            String
+  connectionId         String
+  setupMode            RepoSetupMode           @default(MAPPED)
+  setupStatus          String                  @default("ACTIVE")
+  providerRepositoryId String
+  namespace            String
+  repositoryName       String
+  fullName             String
+  webUrl               String
+  defaultBranch        String                  @default("main")
+  isPrivate            Boolean                 @default(true)
+  defaultPermission    String                  @default("DEVELOPER")
+  syncEnabled          Boolean                 @default(true)
+  createdByIntegration Boolean                 @default(false)
+  lastSyncedAt         DateTime?
+  lastError            String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  project              Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  connection           SourceControlConnection @relation(fields: [connectionId], references: [id])
+  accessGrants         RepositoryAccessGrant[]
+
+  @@unique([connectionId, providerRepositoryId])
+}
+
+model RepositoryAccessGrant {
+  id                   String                  @id @default(cuid())
+  projectRepositoryId  String
+  projectMemberId      String
+  employeeIdentityId   String?
+  externalUserId       String?
+  requestedPermission  String
+  actualPermission     String?
+  status               AccessGrantStatus       @default(QUEUED)
+  managedByApp         Boolean                 @default(true)
+  externalInvitationId String?
+  lastErrorCode        String?
+  lastErrorMessage     String?
+  lastAttemptAt        DateTime?
+  grantedAt            DateTime?
+  revokedAt            DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  projectRepository    ProjectRepository       @relation(fields: [projectRepositoryId], references: [id], onDelete: Cascade)
+  employeeIdentity     EmployeeSourceIdentity? @relation(fields: [employeeIdentityId], references: [id])
+
+  @@unique([projectRepositoryId, projectMemberId])
+}
+
+model IntegrationJob {
+  id             String                   @id @default(cuid())
+  organizationId String
+  connectionId   String?
+  operation      IntegrationJobOp
+  entityType     String
+  entityId       String
+  payload        Json
+  status         IntegrationJobStatus     @default(PENDING)
+  attemptCount   Int                      @default(0)
+  maxAttempts    Int                      @default(5)
+  nextAttemptAt  DateTime                 @default(now())
+  idempotencyKey String                   @unique
+  lastError      String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  connection     SourceControlConnection? @relation(fields: [connectionId], references: [id])
+}
+
+// ── SCM Dashboard models ──────────────────────────────────────────────────────
+
+enum ScmRepoSyncStatus {
+  PENDING
+  SYNCED
+  ERROR
+}
+
+enum ScmEventType {
+  PUSH
+  PULL_REQUEST
+  MERGE_REQUEST
+  CI_RUN
+  PIPELINE
+}
+
+model ScmRepo {
+  id             String             @id @default(cuid())
+  organizationId String
+  connectionId   String
+  externalId     String
+  namespace      String
+  name           String
+  fullName       String
+  webUrl         String
+  defaultBranch  String             @default("main")
+  isPrivate      Boolean            @default(true)
+  isTracked      Boolean            @default(true)
+  syncStatus     ScmRepoSyncStatus  @default(PENDING)
+  lastSyncedAt   DateTime?
+  lastError      String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  connection     SourceControlConnection @relation(fields: [connectionId], references: [id])
+  webhooks       ScmWebhook[]
+  events         ScmEvent[]
+
+  @@unique([connectionId, externalId])
+  @@index([organizationId, isTracked])
+}
+
+model ScmWebhook {
+  id            String    @id @default(cuid())
+  repoId        String
+  organizationId String
+  hookId        String
+  secretEnc     String
+  active        Boolean   @default(true)
+  lastDeliveryAt DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  repo          ScmRepo   @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId])
+  @@index([organizationId])
+}
+
+model ScmEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  repoId         String
+  type           ScmEventType
+  payload        Json
+  processedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  repo           ScmRepo      @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type])
+  @@index([repoId, createdAt])
+}
+
+model Income {
+  id             String         @id @default(cuid())
+  title          String
+  amount         Decimal        @db.Decimal(12, 2)
+  category       IncomeCategory @default(OTHER)
+  description    String?
+  status         IncomeStatus   @default(PENDING)
+  proofUrl       String?
+  proofName      String?
+  proofType      String?
+  date           DateTime       @default(now())
+  recordedById   String
+  organizationId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  recordedBy     User           @relation(fields: [recordedById], references: [id])
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([organizationId, date])
+}
+
+enum IncomeCategory {
+  CLIENT_PAYMENT
+  PROJECT_REVENUE
+  INVESTMENT
+  GRANT
+  SERVICE
+  PRODUCT_SALE
+  REFUND
+  OTHER
+}
+
+enum IncomeStatus {
+  PENDING
+  RECEIVED
+  CANCELLED
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+enum PmProvider {
+  JIRA
+  YOUTRACK
+  LINEAR
+  ASANA
+}
+
+enum PmConnStatus {
+  ACTIVE
+  ERROR
+  DISCONNECTED
+}
+
+model ProjectManagementConnection {
+  id              String       @id @default(cuid())
+  organizationId  String
+  provider        PmProvider
+  providerHost    String       @default("https://api.atlassian.com")
+  accountName     String
+  encryptedToken  String
+  cloudId         String?
+  status          PmConnStatus @default(ACTIVE)
+  connectedById   String
+  lastSyncedAt    DateTime?
+  lastError       String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  connectedBy     User         @relation("PmConnectedBy", fields: [connectedById], references: [id])
+
+  @@unique([organizationId, provider, providerHost, accountName])
+  @@index([organizationId])
+}

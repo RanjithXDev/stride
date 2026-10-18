@@ -1,0 +1,51 @@
+.page { min-height: 100vh; display: grid; grid-template-columns: minmax(420px, 1.05fr) minmax(520px, .95fr); background: #f7f9fc; }
+.storyPanel { position: relative; isolation: isolate; display: flex; min-height: 100vh; flex-direction: column; overflow: hidden; padding: 48px clamp(44px, 6vw, 92px); color: #fff; background: radial-gradient(circle at 15% 16%, rgba(75,130,255,.32), transparent 32%), linear-gradient(145deg, #081939 0%, #102d65 54%, #174da4 100%); }
+.storyPanel::after { content: ""; position: absolute; z-index: -1; right: -22%; bottom: -23%; width: 620px; height: 620px; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; box-shadow: 0 0 0 72px rgba(255,255,255,.025), 0 0 0 150px rgba(255,255,255,.018); }
+.glowOne, .glowTwo { position: absolute; z-index: -1; border-radius: 999px; filter: blur(2px); }
+.glowOne { top: 18%; right: 8%; width: 180px; height: 180px; background: rgba(71,179,255,.11); }
+.glowTwo { right: 32%; bottom: 8%; width: 90px; height: 90px; background: rgba(116,227,205,.12); }
+.brand, .mobileBrand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 750; letter-spacing: -.4px; }
+.brandMark { display: inline-grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; color: #123a7a; background: #fff; box-shadow: 0 8px 24px rgba(3,12,31,.18); font-weight: 800; }
+.storyContent { margin: auto 0; max-width: 620px; padding: 72px 0; }
+.eyebrow, .welcomeBadge { display: inline-block; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.eyebrow { padding: 8px 12px; color: #bcd5ff; border: 1px solid rgba(188,213,255,.24); background: rgba(255,255,255,.06); }
+.storyContent h1 { margin: 28px 0 22px; color: #fff; font-size: clamp(40px, 4vw, 64px); font-weight: 700; line-height: 1.08; letter-spacing: -2.2px; }
+.storyContent > p { max-width: 510px; margin: 0; color: rgba(232,240,255,.76); font-size: 17px; line-height: 1.7; }
+.featureList { display: grid; gap: 15px; margin-top: 36px; color: rgba(255,255,255,.9); font-size: 14px; }
+.featureList div { display: flex; align-items: center; gap: 11px; }
+.featureList svg { color: #6ee7c7; }
+.securityNote { display: flex; align-items: center; gap: 9px; color: rgba(225,235,255,.62); font-size: 12px; }
+.securityNote svg { color: #87aef2; }
+.formPanel { display: flex; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 44px clamp(28px, 6vw, 88px) 24px; background: radial-gradient(circle at 90% 0%, rgba(35,102,210,.08), transparent 28%), #f7f9fc; }
+.mobileBrand { display: none; align-self: flex-start; color: #10264c; }
+.mobileBrand .brandMark { color: #fff; background: #175cd3; }
+.formCard { width: 100%; max-width: 440px; margin: auto 0; }
+.heading { margin-bottom: 34px; }
+.welcomeBadge { margin-bottom: 15px; padding: 7px 10px; color: #175cd3; background: #eaf2ff; }
+.heading h2 { margin: 0 0 10px; color: #10264c; font-size: clamp(28px, 3vw, 36px); line-height: 1.2; letter-spacing: -1px; }
+.heading p { margin: 0; color: #64748b; font-size: 15px; }
+.form :global(.ant-form-item) { margin-bottom: 22px; }
+.form :global(.ant-form-item-label > label) { color: #27364f; font-size: 13px; font-weight: 650; }
+.form :global(.ant-input-affix-wrapper) { min-height: 50px; border-color: #d9e1ec; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(16,38,76,.025); }
+.form :global(.ant-input-affix-wrapper:hover), .form :global(.ant-input-affix-wrapper-focused) { border-color: #175cd3; box-shadow: 0 0 0 3px rgba(23,92,211,.09); }
+.form :global(.ant-input-prefix) { margin-right: 10px; color: #8a99af; }
+.submitButton { min-height: 50px; margin-top: 4px; border-radius: 10px; background: #175cd3; box-shadow: 0 8px 20px rgba(23,92,211,.2); font-weight: 700; }
+.submitButton > span:not(:global(.ant-btn-loading-icon)) { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.divider { display: flex; align-items: center; gap: 14px; margin: 28px 0 18px; color: #8996a8; font-size: 11px; text-transform: uppercase; letter-spacing: .055em; }
+.divider::before, .divider::after { content: ""; height: 1px; flex: 1; background: #e2e7ef; }
+.demoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.demoAccount { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 10px; text-align: left; color: #27364f; border: 1px solid #e0e6ef; border-radius: 10px; background: rgba(255,255,255,.75); cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.demoAccount:hover:not(:disabled) { border-color: #abc6f2; box-shadow: 0 8px 22px rgba(16,38,76,.08); transform: translateY(-2px); }
+.demoAccount:focus-visible { outline: 3px solid rgba(23,92,211,.25); outline-offset: 2px; }
+.demoAccount:disabled { cursor: not-allowed; opacity: .55; }
+.demoAccount > span:last-child { min-width: 0; }
+.demoAccount strong, .demoAccount small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.demoAccount strong { font-size: 12px; }
+.demoAccount small { margin-top: 2px; color: #8a96a8; font-size: 9px; }
+.demoAvatar { display: grid; width: 31px; height: 31px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #175cd3; background: #eaf2ff; font-size: 10px; font-weight: 800; }
+.supportText { display: block; margin-top: 24px; color: #8a96a8 !important; text-align: center; font-size: 12px; }
+.formPanel footer { color: #9aa5b5; font-size: 11px; }
+@media (max-width: 960px) { .page { grid-template-columns: minmax(360px, .8fr) minmax(480px, 1.2fr); } .storyPanel { padding: 40px; } .storyContent h1 { font-size: 42px; } }
+@media (max-width: 760px) { .page { display: block; } .storyPanel { display: none; } .formPanel { min-height: 100svh; justify-content: flex-start; padding: 28px 22px 20px; } .mobileBrand { display: flex; } .formCard { margin: auto 0; padding: 44px 0; } }
+@media (max-width: 460px) { .demoGrid { grid-template-columns: 1fr; } .demoAccount small { font-size: 10px; } }
+@media (prefers-reduced-motion: reduce) { .demoAccount { transition: none; } }
